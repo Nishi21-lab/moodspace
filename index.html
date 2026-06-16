@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoodSpace 🌅</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #fdf6f0; min-height: 100vh;
+    display: flex; justify-content: center; padding: 2rem 1rem;
+  }
+  .app { background: #fff8f3; border-radius: 20px; padding: 2rem; width: 100%; max-width: 580px; height: fit-content; }
+  .header { text-align: center; margin-bottom: 1.5rem; }
+  .header h1 { font-size: 24px; font-weight: 600; color: #7c3a1e; margin-bottom: 4px; }
+  .header p { font-size: 13px; color: #b07050; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 1.5rem; }
+  .tab { flex: 1; padding: 9px; text-align: center; font-size: 13px; font-weight: 500;
+    border-radius: 10px; border: 1px solid #e8c9b0; background: #fff8f3;
+    color: #b07050; cursor: pointer; transition: all .15s; }
+  .tab.active { background: #e8714a; color: #fff; border-color: #e8714a; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .lbl { font-size: 11px; font-weight: 600; color: #c08060; letter-spacing: .06em;
+    text-transform: uppercase; margin-bottom: .6rem; }
+  .card { background: #fff8f3; border: 1px solid #f0d0b8; border-radius: 14px;
+    padding: 1.25rem; margin-bottom: 1.25rem; }
+  .mood-row { display: flex; gap: 8px; justify-content: space-between; }
+  .mbtn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 12px 6px; border: 1px solid #f0d0b8; border-radius: 10px;
+    background: #fff8f3; cursor: pointer; transition: all .15s; }
+  .mbtn:hover { background: #fde8d8; }
+  .mbtn.active { border-color: #e8714a; background: #fde0cc; }
+  .micon { font-size: 26px; line-height: 1; }
+  .mname { font-size: 11px; color: #c08060; font-weight: 500; }
+  .mbtn.active .mname { color: #b84a20; }
+  textarea { width: 100%; min-height: 90px; resize: none; background: #fff8f3;
+    border: 1px solid #f0d0b8; border-radius: 10px; padding: 10px 12px;
+    font-size: 14px; font-family: inherit; color: #5a2a10; outline: none; }
+  textarea:focus { border-color: #e8714a; }
+  textarea::placeholder { color: #d0a080; }
+  .sbtn { width: 100%; padding: 12px; font-size: 14px; font-weight: 600;
+    border-radius: 10px; border: none; background: #e8714a; color: #fff;
+    cursor: pointer; margin-top: 10px; transition: opacity .15s; }
+  .sbtn:hover { opacity: .9; }
+  .sbtn:active { transform: scale(.98); }
+  .motivation-box { background: #fff3e8; border: 1px solid #f5c49a; border-radius: 12px;
+    padding: 1.1rem 1.25rem; margin: 1rem 0; display: none; }
+  .motivation-box.show { display: block; }
+  .motivation-box .quote { font-size: 15px; color: #7c3a1e; line-height: 1.7;
+    font-style: italic; margin-bottom: 6px; }
+  .motivation-box .from { font-size: 11px; color: #c08060; }
+  .community-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .stat-card { background: #fff8f3; border: 1px solid #f0d0b8; border-radius: 12px;
+    padding: 1rem; text-align: center; }
+  .stat-num { font-size: 28px; line-height: 1; margin-bottom: 4px; }
+  .stat-label { font-size: 11px; color: #c08060; font-weight: 500; }
+  .feed-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    border: 1px solid #f0d0b8; border-radius: 10px; background: #fff8f3; margin-bottom: 8px; }
+  .feed-emoji { font-size: 20px; flex-shrink: 0; }
+  .feed-text { font-size: 13px; color: #7c3a1e; }
+  .feed-time { font-size: 11px; color: #c08060; margin-top: 2px; }
+  .chart-wrap { position: relative; width: 100%; height: 160px; }
+  .empty { text-align: center; padding: 2rem 0; color: #c08060; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>🌅 MoodSpace</h1>
+    <p id="today-date"></p>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('log')">My journal</div>
+    <div class="tab" onclick="switchTab('world')">World mood</div>
+    <div class="tab" onclick="switchTab('history')">My history</div>
+  </div>
+
+  <!-- MY JOURNAL -->
+  <div class="page active" id="tab-log">
+    <div class="lbl">How are you feeling right now?</div>
+    <div class="card">
+      <div class="mood-row">
+        <button class="mbtn" data-mood="awful" data-score="1" onclick="selectMood(this)"><span class="micon">😞</span><span class="mname">Awful</span></button>
+        <button class="mbtn" data-mood="sad" data-score="2" onclick="selectMood(this)"><span class="micon">😔</span><span class="mname">Sad</span></button>
+        <button class="mbtn" data-mood="okay" data-score="3" onclick="selectMood(this)"><span class="micon">😐</span><span class="mname">Okay</span></button>
+        <button class="mbtn" data-mood="good" data-score="4" onclick="selectMood(this)"><span class="micon">🙂</span><span class="mname">Good</span></button>
+        <button class="mbtn" data-mood="great" data-score="5" onclick="selectMood(this)"><span class="micon">😄</span><span class="mname">Great</span></button>
+      </div>
+    </div>
+    <div class="lbl">What's on your mind?</div>
+    <textarea id="note" placeholder="Write freely... this is just for you."></textarea>
+    <div class="motivation-box" id="motivation-box">
+      <div class="lbl" style="margin-bottom:8px">Just for you ✨</div>
+      <div class="quote" id="motivation-text"></div>
+      <div class="from" id="motivation-sub"></div>
+    </div>
+    <button class="sbtn" onclick="saveEntry()">Save & get my motivation 🌟</button>
+  </div>
+
+  <!-- WORLD MOOD -->
+  <div class="page" id="tab-world">
+    <div class="lbl">World mood today</div>
+    <div class="community-grid" id="world-stats"></div>
+    <div class="lbl">Recent check-ins</div>
+    <div id="world-feed"></div>
+  </div>
+
+  <!-- MY HISTORY -->
+  <div class="page" id="tab-history">
+    <div class="lbl">My mood over time</div>
+    <div class="card">
+      <div class="chart-wrap">
+        <canvas id="moodChart" role="img" aria-label="Line chart of personal mood history">No entries yet.</canvas>
+      </div>
+    </div>
+    <div class="lbl">Past entries</div>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<script>
+  const KEY = 'moodspace_personal_v1';
+  const WORLD_KEY = 'moodspace_world_v1';
+  let entries = JSON.parse(localStorage.getItem(KEY) || '[]');
+  let worldEntries = JSON.parse(localStorage.getItem(WORLD_KEY) || '[]');
+  let selectedMood = null;
+  let chart = null;
+
+  document.getElementById('today-date').textContent =
+    new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  const MOTIVATIONS = {
+    awful: [
+      {q:"Even the darkest night will end and the sun will rise.", s:"Victor Hugo"},
+      {q:"You are stronger than you know. This moment will pass.", s:"A friend who cares"},
+      {q:"It's okay to not be okay. Be gentle with yourself today.", s:"MoodSpace"},
+      {q:"Every storm runs out of rain. Hang on — brighter days are ahead.", s:"Maya Angelou"}
+    ],
+    sad: [
+      {q:"Feelings are visitors. Let them come, let them go. You are not your sadness.", s:"Mooji"},
+      {q:"What you're feeling is valid. But you are capable of getting through this.", s:"MoodSpace"},
+      {q:"One small positive thought in the morning can change your whole day.", s:"Dalai Lama"},
+      {q:"You've survived every bad day so far. That's a 100% success rate.", s:"A friend who cares"}
+    ],
+    okay: [
+      {q:"Ordinary days are the foundation of an extraordinary life.", s:"MoodSpace"},
+      {q:"Not every day has to be amazing. Being okay is enough.", s:"A friend who cares"},
+      {q:"Small steps every day still move you forward.", s:"MoodSpace"}
+    ],
+    good: [
+      {q:"A good mood is contagious — spread it around today!", s:"MoodSpace"},
+      {q:"You're doing better than you think. Keep going.", s:"A friend who cares"},
+      {q:"Happiness is not by chance, but by choice.", s:"Jim Rohn"}
+    ],
+    great: [
+      {q:"Your energy today is a gift — use it to lift yourself and others.", s:"MoodSpace"},
+      {q:"Soak in this feeling. You deserve it.", s:"A friend who cares"},
+      {q:"Carry this joy with you and share it wherever you go.", s:"MoodSpace"}
+    ]
+  };
+
+  function selectMood(btn) {
+    document.querySelectorAll('.mbtn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedMood = { mood: btn.dataset.mood, score: parseInt(btn.dataset.score), emoji: btn.querySelector('.micon').textContent };
+    document.getElementById('motivation-box').classList.remove('show');
+  }
+
+  function saveEntry() {
+    if (!selectedMood) { alert('Please pick a mood first!'); return; }
+    const note = document.getElementById('note').value.trim();
+    const entry = { date: new Date().toISOString(), mood: selectedMood.mood, score: selectedMood.score, emoji: selectedMood.emoji, note };
+    entries.unshift(entry);
+    localStorage.setItem(KEY, JSON.stringify(entries));
+
+    const worldEntry = { date: new Date().toISOString(), emoji: selectedMood.emoji, mood: selectedMood.mood, score: selectedMood.score };
+    worldEntries.unshift(worldEntry);
+    if (worldEntries.length > 200) worldEntries = worldEntries.slice(0, 200);
+    localStorage.setItem(WORLD_KEY, JSON.stringify(worldEntries));
+
+    showMotivation(selectedMood.mood);
+    document.getElementById('note').value = '';
+    document.querySelectorAll('.mbtn').forEach(b => b.classList.remove('active'));
+    selectedMood = null;
+    renderWorld();
+    renderHistory();
+  }
+
+  function showMotivation(mood) {
+    const pool = MOTIVATIONS[mood] || MOTIVATIONS.okay;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    document.getElementById('motivation-text').textContent = '"' + pick.q + '"';
+    document.getElementById('motivation-sub').textContent = '— ' + pick.s;
+    document.getElementById('motivation-box').classList.add('show');
+  }
+
+  function renderWorld() {
+    const today = new Date().toDateString();
+    const todayEntries = worldEntries.filter(e => new Date(e.date).toDateString() === today);
+    const total = todayEntries.length;
+    const counts = { awful: 0, sad: 0, okay: 0, good: 0, great: 0 };
+    todayEntries.forEach(e => { if (counts[e.mood] !== undefined) counts[e.mood]++; });
+    const dominant = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    const emojiMap = { awful: '😞', sad: '😔', okay: '😐', good: '🙂', great: '😄' };
+    const pctGood = total > 0 ? Math.round((counts.good + counts.great) / total * 100) : 0;
+
+    document.getElementById('world-stats').innerHTML = `
+      <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">check-ins today</div></div>
+      <div class="stat-card"><div class="stat-num">${total > 0 ? emojiMap[dominant[0]] : '—'}</div><div class="stat-label">world mood</div></div>
+      <div class="stat-card"><div class="stat-num">${total > 0 ? pctGood + '%' : '—'}</div><div class="stat-label">feeling good</div></div>
+    `;
+
+    const recent = worldEntries.slice(0, 10);
+    const feed = document.getElementById('world-feed');
+    if (recent.length === 0) {
+      feed.innerHTML = '<div class="empty">Be the first to check in today! 🌅</div>';
+    } else {
+      feed.innerHTML = recent.map(e => `
+        <div class="feed-item">
+          <span class="feed-emoji">${e.emoji}</span>
+          <div>
+            <div class="feed-text">Someone is feeling <strong>${e.mood}</strong></div>
+            <div class="feed-time">${timeAgo(e.date)}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('history-list');
+    if (entries.length === 0) {
+      list.innerHTML = '<div class="empty">No entries yet — start logging! 🌸</div>';
+    } else {
+      list.innerHTML = entries.slice(0, 10).map(e => `
+        <div class="feed-item">
+          <span class="feed-emoji">${e.emoji}</span>
+          <div>
+            <div class="feed-text">${cap(e.mood)}${e.note ? ' — ' + e.note : ''}</div>
+            <div class="feed-time">${formatDate(e.date)}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+    renderChart();
+  }
+
+  function renderChart() {
+    const canvas = document.getElementById('moodChart');
+    const recent = entries.slice(0, 14).reverse();
+    if (chart) { chart.destroy(); chart = null; }
+    if (recent.length === 0) return;
+    chart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: recent.map(e => shortDate(e.date)),
+        datasets: [{ data: recent.map(e => e.score), borderColor: '#e8714a',
+          backgroundColor: 'transparent', pointBackgroundColor: '#e8714a',
+          pointRadius: 4, borderWidth: 1.5, tension: 0.3 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: {
+          label: ctx => ['😞 Awful','😔 Sad','😐 Okay','🙂 Good','😄 Great'][ctx.parsed.y - 1]
+        }}},
+        scales: {
+          y: { min: 0.5, max: 5.5,
+            ticks: { stepSize: 1, callback: v => ['','😞','😔','😐','🙂','😄'][v]||'', font:{size:11} },
+            grid: { color: 'rgba(232,113,74,0.1)' }, border: { display: false } },
+          x: { ticks: { font:{size:11}, maxRotation: 0, autoSkip: true, maxTicksLimit: 7 },
+            grid: { display: false }, border: { display: false } }
+        }
+      }
+    });
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach((t, i) =>
+      t.classList.toggle('active', ['log','world','history'][i] === tab));
+    ['log','world','history'].forEach(id =>
+      document.getElementById('tab-' + id).classList.toggle('active', id === tab));
+    if (tab === 'history') setTimeout(renderChart, 50);
+  }
+
+  function timeAgo(iso) {
+    const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    return shortDate(iso);
+  }
+  function formatDate(iso) { return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }); }
+  function shortDate(iso) { return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric' }); }
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  renderWorld();
+  renderHistory();
+</script>
+</body>
+</html>
